@@ -11,8 +11,8 @@
 ---- Downloaded from: http://wwww.opencores.org/cores/hwlu        ----
 ----                                                              ----
 ---- To Do:                                                       ----
-----         Probably remains as current                          ---- 
-----         (to promote as stable version)                       ----
+----         Add a parameterized version of a fast adder          ---- 
+----         (probably a carry select adder).                     ----
 ----                                                              ----
 ---- Author: Nikolaos Kavvadias                                   ----
 ----         nkavv@skiathos.physics.auth.gr                       ----
@@ -76,16 +76,7 @@ component fa
     co : out std_logic
   );
 end component;
---           
-component fa_nc
-  port (
-    a  : in std_logic;
-    b  : in std_logic;
-    ci : in std_logic;
-    s  : out std_logic
-  );
-end component;
---           
+--             
 component mux2_1
   generic (
     DW : integer := 8
@@ -97,19 +88,23 @@ component mux2_1
 	mout : out std_logic_vector(DW-1 downto 0)
   );
 end component;                        
+--                              
+-- Constant declarations
+constant zero_1b : std_logic := '0';
+constant one_1b  : std_logic := '1';
 --
 -- Signal declarations
 signal carry : std_logic_vector(4 downto 0);
+signal c_up_ci0 : std_logic_vector(4 downto 0);
+signal c_up_ci1 : std_logic_vector(4 downto 0);
 signal s_up_ci0 : std_logic_vector(3 downto 0);
 signal s_up_ci1 : std_logic_vector(3 downto 0);
-signal zero_1b, one_1b : std_logic;
+--
 begin		
   
   carry(0) <= '0';               
   --
-  zero_1b <= '0';
-  one_1b <= '1';
-         
+           
   U_fa0_3_cells : for i in 0 to 3 generate
     U_fa : fa 
       port map (
@@ -120,36 +115,41 @@ begin
         co => carry(i+1)
       );
   end generate U_fa0_3_cells;
+  
+  c_up_ci0(0) <= zero_1b;
+  c_up_ci1(0) <= one_1b;
          
   U_fa4_7_ci0_cells : for i in 0 to 3 generate
-    U_fa_nc : fa_nc 
+    U_fa : fa 
       port map (
         a => a(i+4),
         b => b(i+4),
-        ci => zero_1b,
-        s => s_up_ci0(i)
+        ci => c_up_ci0(i),
+        s => s_up_ci0(i),
+        co => c_up_ci0(i+1)
       );
   end generate U_fa4_7_ci0_cells;
 
   U_fa4_7_ci1_cells : for i in 0 to 3 generate
-    U_fa_nc : fa_nc 
+    U_fa : fa 
       port map (
         a => a(i+4),
         b => b(i+4),
-        ci => one_1b,
-        s => s_up_ci1(i)
-      );         
+        ci => c_up_ci1(i),
+        s => s_up_ci1(i),
+        co => c_up_ci1(i+1)
+      );
   end generate U_fa4_7_ci1_cells;
-      
-   U_mux_s_up : mux2_1 
-     generic map (
-       DW => 4
-     )
-     port map (
-       in0 => s_up_ci0(3 downto 0),
-       in1 => s_up_ci1(3 downto 0),
-       sel => carry(4),
-       mout => sum(7 downto 4)
-     );
+  
+  U_mux_s_up : mux2_1 
+    generic map (
+      DW => 4
+    )
+    port map (
+      in0 => s_up_ci0(3 downto 0),
+      in1 => s_up_ci1(3 downto 0),
+      sel => carry(4),
+      mout => sum(7 downto 4)
+    );
     
 end structural;
